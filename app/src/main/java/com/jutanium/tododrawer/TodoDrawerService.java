@@ -122,10 +122,6 @@ public class TodoDrawerService extends Service {
         updateNotification();
     }
 
-    private void deleteTodo(Todo todo) {
-        deleteTodo(todo.id);
-    }
-
     private void deleteTodo(int index) {
 
         todosPrefs.edit()
