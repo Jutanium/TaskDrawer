@@ -147,7 +147,7 @@ public class TodoDrawerService extends Service {
                     .setContentText(exampleText)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(exampleText))
                     .setSmallIcon(R.drawable.task)
-                    .addAction(new NotificationCompat.Action(R.drawable.checkmark, "Add Task", addButtonPendingIntent))
+                    .addAction(new NotificationCompat.Action(R.drawable.plus, "Add Task", addButtonPendingIntent))
                     .setDeleteIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0))
                     .build();
             notificationManager.notify(0, notification);
