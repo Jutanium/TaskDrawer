@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/TODODrawer.iml" filepath="$PROJECT_DIR$/TODODrawer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/TaskDrawer.iml" filepath="$PROJECT_DIR$/TaskDrawer.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

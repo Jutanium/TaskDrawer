@@ -1,6 +1,6 @@
 <resources>
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="android:Theme.Holo.Dialog">
+    <style name="AppTheme" parent="android:Theme.Material.Dialog">
         <!-- Customize your theme here. -->
     </style>
 

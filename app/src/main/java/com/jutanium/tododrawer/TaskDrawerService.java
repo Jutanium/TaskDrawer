@@ -8,46 +8,38 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 
-public class TodoDrawerService extends Service {
-    public static final String PREFS_METADATA = "MetaPrefs";
-    public static final String PREFS_TODOS = "TodosPrefs";
+public class TaskDrawerService extends Service {
+
     public static final String NotificationDeleted = "NotificationDeleted";
     public static final String DeleteButtonPressed = "DeleteButtonPressed";
     public static final String DialogButtonPressed = "DialogButtonPressed";
 
-    private SharedPreferences todosPrefs;
-    private SharedPreferences metaPrefs;
-   // private Map<Integer, Todo> todoMap;
-    private ArrayList<Todo> todoList;
+   // private Map<Integer, Task> todoMap;
+    private ArrayList<Task> taskList;
     private int lastId;
     private NotificationManager notificationManager;
     private NotificationDeletedBroadcastReceiver notificationDeletedBroadcastReceiver;
     private DeleteButtonBroadcastReceiver deleteButtonBroadcastReceiver;
     private DialogButtonBroadcastReceiver dialogButtonBroadcastReceiver;
 
+    private TaskLoader taskLoader;
     public int currentIndex = 0;
     @Override
     //This is the constructor.
     public void onCreate() {
         Log("Constructed");
-        todosPrefs = getSharedPreferences(PREFS_TODOS, 0);
-        metaPrefs = getSharedPreferences(PREFS_METADATA, 0);
-        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-        todoList = loadFromStorage();
-        lastId = getSharedPreferences(PREFS_METADATA, 0).getInt("lastId", 0);
+        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        taskLoader = new TaskLoader(this);
+        taskList = taskLoader.loadFromStorage();
+        lastId = taskLoader.getLastId();
+
         notificationDeletedBroadcastReceiver = new NotificationDeletedBroadcastReceiver();
         registerReceiver(notificationDeletedBroadcastReceiver, new IntentFilter(NotificationDeleted));
         deleteButtonBroadcastReceiver = new DeleteButtonBroadcastReceiver();
@@ -78,46 +70,22 @@ public class TodoDrawerService extends Service {
         unregisterReceiver(deleteButtonBroadcastReceiver);
         unregisterReceiver(dialogButtonBroadcastReceiver);
     }
-    private ArrayList<Todo> loadFromStorage() {
 
-        ArrayList<Todo> newList = new ArrayList<Todo>();
 
-        Map<String, ?> storage = todosPrefs.getAll();
+    private void addTask(String title, String details) {
 
-        for (String key : storage.keySet()) {
-            String[] values = new String[2];
-            values = todosPrefs.getStringSet(key, Collections.<String>emptySet()).toArray(values);
-
-            if (values[0].charAt(0) == 't' && values[1].charAt(0) == 'd')
-                newList.add(new Todo(Integer.valueOf(key), values[0].substring(2), values[1].substring(2)));
-            else if (values[0].charAt(0) == 'd' && values[1].charAt(0) == 't')
-                newList.add(new Todo(Integer.valueOf(key), values[1].substring(2), values[0].substring(2)));
-        }
-
-        return newList;
-    }
-
-    private void addTodo(String title, String details) {
-
-        todoList.add(new Todo(++lastId, title, details));
-        metaPrefs.edit()
-                .putInt("lastId", lastId)
-                .apply();
-
-        todosPrefs.edit()
-                .putStringSet(String.valueOf(lastId), new HashSet<String>(Arrays.asList("t:"+title, "d:"+details )))
-                .apply();
+        Task newTask = new Task(++lastId, title, details);
+        taskList.add(newTask);
+        taskLoader.addTask(newTask);
 
 
         updateNotification();
     }
 
-    private void deleteTodo(int index) {
+    private void deleteTask(int index) {
 
-        todosPrefs.edit()
-                .remove(String.valueOf(todoList.get(index).id))
-                .apply();
-        todoList.remove(index);
+        taskLoader.deleteTask(taskList.get(index).id);
+        taskList.remove(index);
 
     }
     private boolean updateNotification() {
@@ -128,7 +96,7 @@ public class TodoDrawerService extends Service {
         Intent slideIntent = new Intent();
         slideIntent.setAction(NotificationDeleted);
 
-        if (todoList.size() == 0) //Display an instruction notification
+        if (taskList.size() == 0) //Display an instruction notification
         {
             String exampleTitle = getResources().getString(R.string.example_title);
             String exampleText = getResources().getString(R.string.example_text);
@@ -143,9 +111,9 @@ public class TodoDrawerService extends Service {
             notificationManager.notify(0, notification);
             return true;
         }
-        if (currentIndex >= todoList.size()) currentIndex = 0;
-        Todo todo = todoList.get(currentIndex);
-        if (todo == null)
+        if (currentIndex >= taskList.size()) currentIndex = 0;
+        Task task = taskList.get(currentIndex);
+        if (task == null)
             return false;
 
 
@@ -156,9 +124,9 @@ public class TodoDrawerService extends Service {
         PendingIntent deleteButtonPendingIntent = PendingIntent.getBroadcast(MyApp.getContext(), 0, deleteButtonIntent, 0);
 
         Notification notification = new NotificationCompat.Builder(MyApp.getContext())
-                .setContentTitle(todo.title)
-                .setContentText(todo.details)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(todo.details))
+                .setContentTitle(task.title)
+                .setContentText(task.details)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(task.details))
                 .setSmallIcon(R.drawable.task)
                 .addAction(new NotificationCompat.Action(R.drawable.plus, "Add Task", addButtonPendingIntent))
                 .addAction(new NotificationCompat.Action(R.drawable.checkmark, "Done", deleteButtonPendingIntent))
@@ -175,7 +143,7 @@ public class TodoDrawerService extends Service {
     }
 
     private void Log (String log) {
-        Log.i("TodoDrawerService", log);
+        Log.i("TaskDrawerService", log);
     }
 
 
@@ -200,7 +168,7 @@ public class TodoDrawerService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.i("DeleteButtonBroadcastReceiver", "Delete button pressed");
-                deleteTodo(currentIndex);
+                deleteTask(currentIndex);
                 updateNotification();
             }
         }
@@ -210,7 +178,7 @@ public class TodoDrawerService extends Service {
         public void onReceive(Context context, Intent intent) {
             Log.i("DialogButtonBroadcastReceiver", "Dialog button pressed");
             if (intent.hasExtra("title") && intent.hasExtra("details")) {
-                addTodo(intent.getStringExtra("title"), intent.getStringExtra("details"));
+                addTask(intent.getStringExtra("title"), intent.getStringExtra("details"));
             }
         }
     }

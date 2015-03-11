@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.jutanium.tododrawer" >
 
     <application
@@ -19,9 +20,8 @@
         </activity>
         <activity android:name=".AddTaskDialogActivity"
             android:label="@string/add_new_task"
-            android:theme="@android:style/Theme.Dialog"
             />
-        <service android:name=".TodoDrawerService">
+        <service android:name=".TaskDrawerService">
 
         </service>
     </application>
