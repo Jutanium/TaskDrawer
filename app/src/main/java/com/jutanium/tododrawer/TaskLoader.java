@@ -74,9 +74,9 @@ public class TaskLoader {
                 .apply();
     }
 
-    public void editTask(int id, Task task) {
+    public void editTask(Task task) {
         todosPrefs.edit()
-                .putStringSet(String.valueOf(id), new HashSet<String>(Arrays.asList(
+                .putStringSet(String.valueOf(task.id), new HashSet<String>(Arrays.asList(
                         titleAccessor + task.title,
                         descriptionAccessor + task.details)))
                 .apply();

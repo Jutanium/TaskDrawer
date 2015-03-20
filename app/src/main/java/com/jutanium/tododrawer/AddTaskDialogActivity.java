@@ -14,6 +14,7 @@ public class AddTaskDialogActivity extends Activity {
     private EditText detailsEditText;
     private Button addButton;
     private Button cancelButton;
+    private int id = -1;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -24,10 +25,28 @@ public class AddTaskDialogActivity extends Activity {
         titleEditText = (EditText) findViewById(R.id.name);
         detailsEditText = (EditText) findViewById(R.id.details);
 
+        Intent i = getIntent();
+        if (getIntent().hasExtra("title") || getIntent().hasExtra("details")) {
+            setTitle(R.string.edit_task);
+            addButton.setText(R.string.done);
+            id = getIntent().getIntExtra("index", -1);
+        }
+        else {
+            setTitle(R.string.add_task);
+            addButton.setText(R.string.add);
+        }
+        if (getIntent().hasExtra("title")) {
+            titleEditText.setText(getIntent().getStringExtra("title"));
+        }
+
+        if (getIntent().hasExtra("details")) {
+            detailsEditText.setText(getIntent().getStringExtra("details"));
+        }
         addButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent broadcastIntent = new Intent(TaskDrawerService.DialogButtonPressed);
+                broadcastIntent.putExtra("index", id);
                 broadcastIntent.putExtra("title", titleEditText.getText().toString());
                 broadcastIntent.putExtra("details", detailsEditText.getText().toString());
                 sendBroadcast(broadcastIntent);
