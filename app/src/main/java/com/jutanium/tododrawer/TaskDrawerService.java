@@ -114,6 +114,7 @@ public class TaskDrawerService extends Service {
                     .setContentText(exampleText)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(exampleText))
                     .setSmallIcon(R.drawable.task)
+                    .setOngoing(true)
                     .addAction(new NotificationCompat.Action(R.drawable.plus, "Add Task", addButtonPendingIntent))
                     .setDeleteIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0))
                     .build();
@@ -137,9 +138,9 @@ public class TaskDrawerService extends Service {
 
         Intent deleteButtonIntent = new Intent();
         deleteButtonIntent.setAction(DeleteButtonPressed);
-        PendingIntent deleteButtonPendingIntent = PendingIntent.getBroadcast(MyApp.getContext(), 0, deleteButtonIntent, 0);
+        PendingIntent deleteButtonPendingIntent = PendingIntent.getBroadcast(MyApp.getContext(), 0, deleteButtonIntent, 0, PendingIntent.);
 
-        Notification notification = new NotificationCompat.Builder(MyApp.getContext())
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(MyApp.getContext())
                 .setContentTitle(task.title)
                 .setContentText(task.details)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(task.details))
@@ -147,10 +148,14 @@ public class TaskDrawerService extends Service {
                 .addAction(new NotificationCompat.Action(R.drawable.plus, getString(R.string.add_task), addButtonPendingIntent))
                 .addAction(new NotificationCompat.Action(R.drawable.edit, getString(R.string.edit_task), editButtonPendingIntent))
                 .addAction(new NotificationCompat.Action(R.drawable.checkmark, getString(R.string.complete), deleteButtonPendingIntent))
-                .setDeleteIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0))
-                .build();
+                .setDeleteIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0));
 
-        notificationManager.notify(0, notification);
+        if (taskList.size() == 1)
+            builder.setOngoing(true);
+
+
+
+        notificationManager.notify(0, builder.build());
 
         return true;
     }

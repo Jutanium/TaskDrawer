@@ -16,6 +16,7 @@ public class MainActivity extends Activity {
 
             Intent serviceIntent = new Intent(getApplicationContext(), TaskDrawerService.class);
             startService(serviceIntent);
+
         finish();
     }
 
