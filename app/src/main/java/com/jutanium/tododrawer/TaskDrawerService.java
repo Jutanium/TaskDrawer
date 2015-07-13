@@ -8,10 +8,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
+import android.util.DisplayMetrics;
 import android.util.Log;
+
 
 import java.util.ArrayList;
 import java.util.ResourceBundle;
@@ -25,14 +28,16 @@ public class TaskDrawerService extends Service {
    // private Map<Integer, Task> todoMap;
     private ArrayList<Task> taskList;
     private int lastId;
+    public int currentIndex = 0;
+
     private NotificationManager notificationManager;
     private NotificationDeletedBroadcastReceiver notificationDeletedBroadcastReceiver;
     private DeleteButtonBroadcastReceiver deleteButtonBroadcastReceiver;
     private DialogButtonBroadcastReceiver dialogButtonBroadcastReceiver;
 
-
     private TaskLoader taskLoader;
-    public int currentIndex = 0;
+    private DisplayMetrics display;
+    private int orientation;
     @Override
     //This is the constructor.
     public void onCreate() {
@@ -43,6 +48,9 @@ public class TaskDrawerService extends Service {
         taskList = taskLoader.loadFromStorage();
         lastId = taskLoader.getLastId();
 
+        display = getResources().getDisplayMetrics();
+        orientation = getResources().getConfiguration().orientation;
+
         notificationDeletedBroadcastReceiver = new NotificationDeletedBroadcastReceiver();
         registerReceiver(notificationDeletedBroadcastReceiver, new IntentFilter(NotificationDeleted));
         deleteButtonBroadcastReceiver = new DeleteButtonBroadcastReceiver();
@@ -50,6 +58,8 @@ public class TaskDrawerService extends Service {
         dialogButtonBroadcastReceiver = new DialogButtonBroadcastReceiver();
         registerReceiver(dialogButtonBroadcastReceiver, new IntentFilter(DialogButtonPressed));
         updateNotification();
+
+
     }
 
     @Override
@@ -57,11 +67,6 @@ public class TaskDrawerService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         Log("We got started by " + intent);
-
-
-        ////bind to service. When the service binds, it calls ServiceConnection's method
-        //Intent loadMessagesIntent = new Intent(this, LoadMessagesService.class);
-        //bindService(loadMessagesIntent, connection, Context.BIND_AUTO_CREATE);
 
         // We want this service to continue running until it is explicitly stopped,
         // so return sticky.
@@ -74,10 +79,17 @@ public class TaskDrawerService extends Service {
         unregisterReceiver(dialogButtonBroadcastReceiver);
     }
 
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (newConfig.orientation != orientation) {
+            updateNotification();
+            orientation = newConfig.orientation;
+        }
+    }
+    private void addTask(Task.TaskPuts puts) {
 
-    private void addTask(String title, String details) {
-
-        Task newTask = new Task(++lastId, title, details);
+        Task newTask = new Task(++lastId, puts.title, puts.details, puts.dateCreated, puts.dateExpires);
         taskList.add(newTask);
         taskLoader.addTask(newTask);
 
@@ -85,22 +97,34 @@ public class TaskDrawerService extends Service {
         updateNotification();
     }
 
-    private void editTask(int index, String title, String details) {
-        Task task = new Task(taskList.get(index).id, title, details);
-        taskLoader.editTask(task);
-        taskList.add(index, task);
+    private void editTask(int index, Task.TaskPuts params) {
+
+        Task oldTask = taskList.get(index);
+
+        if (!params.hasTitle())
+            params.title = oldTask.getTitle();
+        if (!params.hasDetails())
+            params.details = oldTask.getDetails();
+        if (!params.hasDateExpires())
+            params.dateExpires = oldTask.getDateExpires();
+        params.dateCreated = oldTask.getDateCreated();
+
+        Task newTask = new Task(index, params);
+
+        taskLoader.editTask(newTask);
+        taskList.set(index, newTask);
         updateNotification();
     }
     private void deleteTask(int index) {
 
-        taskLoader.deleteTask(taskList.get(index).id);
+        taskLoader.deleteTask(taskList.get(index).getId());
         taskList.remove(index);
 
     }
     private boolean updateNotification() {
 
         Intent addButtonIntent = new Intent(this, AddTaskDialogActivity.class);
-        PendingIntent addButtonPendingIntent = PendingIntent.getActivity(MyApp.getContext(), 0, addButtonIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent addButtonPendingIntent = PendingIntent.getActivity(MyApp.getContext(), 2, addButtonIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         Intent slideIntent = new Intent();
         slideIntent.setAction(NotificationDeleted);
@@ -131,24 +155,35 @@ public class TaskDrawerService extends Service {
 
         Intent editButtonIntent = new Intent(this, AddTaskDialogActivity.class);
         editButtonIntent.putExtra("index", currentIndex);
-        editButtonIntent.putExtra("title", taskList.get(currentIndex).title);
-        editButtonIntent.putExtra("details", taskList.get(currentIndex).details);
+        editButtonIntent.putExtra("title", taskList.get(currentIndex).getTitle());
+        editButtonIntent.putExtra("details", taskList.get(currentIndex).getDetails());
 
-        PendingIntent editButtonPendingIntent = PendingIntent.getActivity(MyApp.getContext(), 0, editButtonIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent editButtonPendingIntent = PendingIntent.getActivity(MyApp.getContext(), 1, editButtonIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         Intent deleteButtonIntent = new Intent();
         deleteButtonIntent.setAction(DeleteButtonPressed);
-        PendingIntent deleteButtonPendingIntent = PendingIntent.getBroadcast(MyApp.getContext(), 0, deleteButtonIntent, 0, PendingIntent.);
+        PendingIntent deleteButtonPendingIntent = PendingIntent.getBroadcast(MyApp.getContext(), 0, deleteButtonIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(MyApp.getContext())
-                .setContentTitle(task.title)
-                .setContentText(task.details)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(task.details))
+                .setContentTitle(task.getTitle())
+                .setContentText(task.getDetails())
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(task.getDetails()))
                 .setSmallIcon(R.drawable.task)
-                .addAction(new NotificationCompat.Action(R.drawable.plus, getString(R.string.add_task), addButtonPendingIntent))
-                .addAction(new NotificationCompat.Action(R.drawable.edit, getString(R.string.edit_task), editButtonPendingIntent))
-                .addAction(new NotificationCompat.Action(R.drawable.checkmark, getString(R.string.complete), deleteButtonPendingIntent))
+                .setContentIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0))
                 .setDeleteIntent(PendingIntent.getBroadcast(MyApp.getContext(), 0, slideIntent, 0));
+
+
+        if (display.widthPixels / display.xdpi > 3.5) {
+
+            builder.addAction(new NotificationCompat.Action(R.drawable.plus, getString(R.string.add_task), addButtonPendingIntent))
+                    .addAction(new NotificationCompat.Action(R.drawable.edit, getString(R.string.edit_task), editButtonPendingIntent))
+                    .addAction(new NotificationCompat.Action(R.drawable.checkmark, getString(R.string.complete), deleteButtonPendingIntent));
+        }
+        else {
+            builder.addAction(new NotificationCompat.Action(R.drawable.plus, "", addButtonPendingIntent))
+                    .addAction(new NotificationCompat.Action(R.drawable.edit, "", editButtonPendingIntent))
+                    .addAction(new NotificationCompat.Action(R.drawable.checkmark, "", deleteButtonPendingIntent));
+        }
 
         if (taskList.size() == 1)
             builder.setOngoing(true);
@@ -164,8 +199,8 @@ public class TaskDrawerService extends Service {
         return null;
     }
 
-    private void Log (String log) {
-        Log.i("TaskDrawerService", log);
+    private void Log (Object log) {
+        Log.i("TaskDrawerService", String.valueOf(log));
     }
 
 
@@ -201,11 +236,14 @@ public class TaskDrawerService extends Service {
             Log.i("DialogButtonBroadcastReceiver", "Dialog button pressed");
             if (intent.hasExtra("title") && intent.hasExtra("details")) {
                 int index = intent.getIntExtra("index", -1);
+                Task.TaskPuts puts = new Task.TaskPuts();
+                puts.title = intent.getStringExtra("title");
+                puts.details = intent.getStringExtra("details");
                 if (index != -1) {
-                    editTask(index, intent.getStringExtra("title"), intent.getStringExtra("details"));
+                    editTask(index, puts);
                     return;
                 }
-                addTask(intent.getStringExtra("title"), intent.getStringExtra("details"));
+                addTask(puts);
             }
         }
     }
