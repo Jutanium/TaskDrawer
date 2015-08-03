@@ -3,7 +3,6 @@ package com.jutanium.tododrawer;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,9 +11,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
+import android.widget.TimePicker;
+
+import java.util.Calendar;
 
 public class AddTaskDialogActivity extends Activity {
 
@@ -30,6 +32,12 @@ public class AddTaskDialogActivity extends Activity {
     private boolean timePickerShown = false;
     
     private int id = -1;
+
+    private final String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
+    private int calendarYear;
+    private int currentHour, currentMinute, currentYear, currentMonth, currentDay;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,7 +53,12 @@ public class AddTaskDialogActivity extends Activity {
 
         inflator =  (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
-
+        Calendar c = Calendar.getInstance();
+        currentHour = c.get(Calendar.HOUR);
+        currentMinute = c.get(Calendar.MINUTE);
+        currentYear = calendarYear = c.get(Calendar.YEAR);
+        currentMonth = c.get(Calendar.MONTH);
+        currentDay = c.get(Calendar.DATE);
 
         Intent i = getIntent();
         if (getIntent().hasExtra("title") || getIntent().hasExtra("details")) {
@@ -79,12 +92,14 @@ public class AddTaskDialogActivity extends Activity {
         dateSpinner.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN)
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setPressed(true);
+                    toggleDatePicker();
+                }
                 if (event.getAction() == MotionEvent.ACTION_UP)
                     v.setPressed(false);
 
-                toggleDatePicker();
+
                 return true;
             }
         });
@@ -92,8 +107,10 @@ public class AddTaskDialogActivity extends Activity {
         timeSpinner.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN)
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setPressed(true);
+                    toggleTimePicker();
+                }
                 if (event.getAction() == MotionEvent.ACTION_UP)
                     v.setPressed(false);
 
@@ -124,11 +141,30 @@ public class AddTaskDialogActivity extends Activity {
 
     private void toggleDatePicker() {
         if (!datePickerShown && !timePickerShown) {
+            titleEditText.setVisibility(View.GONE);
+            detailsEditText.setVisibility(View.GONE);
             View v = inflator.inflate(R.layout.datepicker, null);
+            ((DatePicker)v).init(currentYear, currentMonth, currentDay, new DatePicker.OnDateChangedListener() {
+                @Override
+                public void onDateChanged(DatePicker view, int year, int month, int day) {
+                    String text = months[month] + " " + day;
+                    if (year != calendarYear) text += " " + year;
+                    ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(AddTaskDialogActivity.this,
+                            android.R.layout.simple_spinner_dropdown_item,
+                            new CharSequence[] { text } );
+                    dateSpinner.setAdapter(adapter);
+
+                    currentYear = year;
+                    currentMonth = month;
+                    currentDay = day;
+                }
+            });
             ViewGroup insertPoint = (ViewGroup) findViewById(R.id.datePickerLayout);
             insertPoint.addView(v, 0, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
         else  {
+            titleEditText.setVisibility(View.VISIBLE);
+            detailsEditText.setVisibility(View.VISIBLE);
             ViewGroup layout = (ViewGroup) findViewById(R.id.datePickerLayout);
             layout.removeAllViews();
         }
@@ -137,11 +173,36 @@ public class AddTaskDialogActivity extends Activity {
 
     private void toggleTimePicker() {
         if (!datePickerShown && !timePickerShown) {
-            View v = inflator.inflate(R.layout.timepicker, null);
+            titleEditText.setVisibility(View.GONE);
+            detailsEditText.setVisibility(View.GONE);
+            TimePicker v = (TimePicker)inflator.inflate(R.layout.timepicker, null);
+            v.setCurrentHour(currentHour);
+            v.setCurrentMinute(currentMinute);
+            v.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
+                @Override
+                public void onTimeChanged(TimePicker view, int hour, int minute) {
+                    String minuteString = minute < 10 ? "0" + minute : String.valueOf(minute);
+                    String text = "";
+                    if (hour == 0) text = "12:" + minuteString + "AM";
+                    else text = (hour > 12 ? hour - 12 : hour) +
+                            ":" + minuteString + (hour >= 12 ? "PM" : "AM");
+                    ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(AddTaskDialogActivity.this,
+                            android.R.layout.simple_spinner_dropdown_item,
+                            new CharSequence[] { text } );
+                    timeSpinner.setAdapter(adapter);
+
+                    currentHour = hour;
+                    currentMinute = minute;
+                }
+            });
+
             ViewGroup insertPoint = (ViewGroup) findViewById(R.id.timePickerLayout);
             insertPoint.addView(v, 0, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         }
         else  {
+            titleEditText.setVisibility(View.VISIBLE);
+            detailsEditText.setVisibility(View.VISIBLE);
             ViewGroup layout = (ViewGroup) findViewById(R.id.timePickerLayout);
             layout.removeAllViews();
         }
